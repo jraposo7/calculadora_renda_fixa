@@ -1,0 +1,14 @@
+# Sistema operacional / editores
+.DS_Store
+Thumbs.db
+Desktop.ini
+.idea/
+.vscode/
+
+# Dependências (caso o projeto passe a usar npm)
+node_modules/
+
+# Builds e temporários
+dist/
+build/
+*.log

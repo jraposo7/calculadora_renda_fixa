@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CALCULADORA DE RENDA FIXA</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body class="min-h-screen">
+  <main class="max-w-7xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
+    <header class="mb-7 flex flex-wrap items-start justify-between gap-4">
+      <div>
+        <p class="text-sm font-semibold tracking-wide uppercase" style="color: var(--accent);">Planejamento de renda fixa</p>
+        <h1 class="mt-2 text-3xl sm:text-4xl font-bold tracking-tight">CALCULADORA DE RENDA FIXA</h1>
+        <p class="mt-3 max-w-3xl text-muted">Compare Tesouro Direto, CDB e LCI em cenários pós-fixados, prefixados e atrelados ao IPCA. Todas as simulações são executadas neste navegador.</p>
+      </div>
+      <div class="flex flex-col items-end gap-2">
+        <button id="themeToggle" class="theme-toggle" title="Alternar tema claro/escuro">
+          <span id="themeIcon">🌙</span>
+          <span id="themeLabel">Escuro</span>
+        </button>
+        <div class="flex items-center gap-2">
+          <span id="apiStatus" class="api-status">Dados locais</span>
+          <button id="refreshApi" class="text-xs px-3 py-1.5 rounded-lg btn-outline" title="Buscar taxas atualizadas no Banco Central">Atualizar BCB</button>
+        </div>
+      </div>
+    </header>
+
+    <section class="grid grid-cols-1 xl:grid-cols-3 gap-5 items-start">
+      <div class="xl:col-span-1 surface p-5">
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="text-lg font-bold">Parâmetros gerais</h2>
+          <button id="reset" class="text-sm hover:underline" style="color: var(--accent);">Restaurar padrão</button>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <label class="col-span-2 text-sm font-medium">Valor inicial (R$)
+            <input id="principal" class="field mt-1" type="number" min="0" step="100" value="10000">
+          </label>
+          <label class="text-sm font-medium">Prazo (meses)
+            <input id="months" class="field mt-1" type="number" min="1" max="600" value="36">
+          </label>
+          <label class="text-sm font-medium">Aporte mensal (R$)
+            <input id="monthly" class="field mt-1" type="number" min="0" step="100" value="0">
+          </label>
+          <label class="text-sm font-medium">Selic (% a.a.)
+            <input id="selic" class="field mt-1" type="number" step="0.05" value="10.00">
+          </label>
+          <label class="text-sm font-medium">CDI (% a.a.)
+            <input id="cdi" class="field mt-1" type="number" step="0.05" value="9.90">
+          </label>
+          <label class="col-span-2 text-sm font-medium">IPCA (% a.a.)
+            <input id="ipca" class="field mt-1" type="number" step="0.05" value="4.50">
+          </label>
+          <label class="col-span-2 text-sm font-medium">IR padrão — CDB e Tesouro
+            <select id="taxMode" class="field mt-1">
+              <option value="regressivo" selected>Tabela regressiva por prazo</option>
+              <option value="15">15% (alíquota fixa para simulação)</option>
+              <option value="17.5">17,5%</option>
+              <option value="20">20%</option>
+              <option value="22.5">22,5%</option>
+            </select>
+          </label>
+        </div>
+        <p class="text-xs mt-3 text-muted">Selic e CDI são independentes para permitir cenários. O CDI não é automaticamente calculado a partir da Selic. Use "Atualizar BCB" para buscar as taxas mais recentes.</p>
+        <p class="text-xs mt-1 text-muted">O aporte mensal é aplicado ao final de cada mês, pelo mesmo prazo informado, e recebe a mesma rentabilidade e os mesmos custos do aporte inicial.</p>
+
+        <div class="mt-5 pt-5" style="border-top: 1px solid var(--border);">
+          <h3 class="font-semibold mb-3">Taxas e custos do Tesouro Direto</h3>
+          <div class="grid grid-cols-2 gap-3">
+            <label class="text-sm font-medium">Custódia B3 (% a.a.)
+              <input id="b3fee" class="field mt-1" type="number" step="0.01" value="0.20">
+            </label>
+            <label class="text-sm font-medium">Taxa instituição (% a.a.)
+              <input id="treasuryFee" class="field mt-1" type="number" step="0.01" value="0">
+            </label>
+          </div>
+          <p class="text-xs mt-2 text-muted">A taxa B3 padrão é 0,20% a.a. para Tesouro IPCA+ e Prefixado. Regras especiais de custódia e eventuais isenções podem variar conforme o título e as normas vigentes.</p>
+        </div>
+
+        <div class="mt-5 pt-5" style="border-top: 1px solid var(--border);">
+          <h3 class="font-semibold mb-3">Custos de CDB e LCI</h3>
+          <div class="grid grid-cols-2 gap-3">
+            <label class="text-sm font-medium">Taxa anual (% a.a.)
+              <input id="bankFee" class="field mt-1" type="number" step="0.01" value="0">
+            </label>
+            <label class="text-sm font-medium">Custo inicial (%)
+              <input id="entryFee" class="field mt-1" type="number" step="0.01" value="0">
+            </label>
+            <label class="col-span-2 text-sm font-medium">IR da LCI (%)
+              <input id="lciTax" class="field mt-1" type="number" min="0" max="100" step="0.1" value="0">
+            </label>
+          </div>
+          <p class="text-xs mt-2 text-muted">Configure tarifas, custódia, spread ou outros custos do emissor/corretora. IR da LCI começa em 0% como hipótese para pessoa física; altere se a regra aplicável ao seu caso mudar.</p>
+        </div>
+      </div>
+
+      <div class="xl:col-span-2 space-y-5">
+        <section class="surface p-5">
+          <div class="flex flex-wrap items-center justify-between gap-2 mb-4">
+            <div>
+              <h2 class="text-lg font-bold">Taxas oferecidas por cada produto</h2>
+              <p class="text-sm text-muted">Informe as condições da aplicação. As taxas são anuais.</p>
+            </div>
+            <span class="text-xs rounded-full px-3 py-1" style="background: rgba(45,212,191,.12); color: var(--accent);">Editável</span>
+          </div>
+          <div class="overflow-x-auto">
+            <table class="w-full min-w-[650px] text-sm">
+              <thead><tr class="text-left border-b" style="border-color: var(--border);">
+                <th class="py-2 pr-3 font-medium text-muted">Produto</th>
+                <th class="py-2 px-2 font-medium text-muted">Pós-fixado (% CDI)</th>
+                <th class="py-2 px-2 font-medium text-muted">Prefixado (% a.a.)</th>
+                <th class="py-2 px-2 font-medium text-muted">IPCA+ (% real a.a.)</th>
+              </tr></thead>
+              <tbody>
+                <tr style="border-bottom: 1px solid var(--border);"><td class="py-3 pr-3 font-semibold">Tesouro Direto</td>
+                  <td class="px-2"><input id="tPost" class="field" type="number" step="0.1" value="100"></td>
+                  <td class="px-2"><input id="tPre" class="field" type="number" step="0.05" value="12"></td>
+                  <td class="px-2"><input id="tIpca" class="field" type="number" step="0.05" value="6"></td></tr>
+                <tr style="border-bottom: 1px solid var(--border);"><td class="py-3 pr-3 font-semibold">CDB</td>
+                  <td class="px-2"><input id="cPost" class="field" type="number" step="0.1" value="110"></td>
+                  <td class="px-2"><input id="cPre" class="field" type="number" step="0.05" value="13"></td>
+                  <td class="px-2"><input id="cIpca" class="field" type="number" step="0.05" value="7"></td></tr>
+                <tr><td class="py-3 pr-3 font-semibold">LCI</td>
+                  <td class="px-2"><input id="lPost" class="field" type="number" step="0.1" value="95"></td>
+                  <td class="px-2"><input id="lPre" class="field" type="number" step="0.05" value="11"></td>
+                  <td class="px-2"><input id="lIpca" class="field" type="number" step="0.05" value="5.5"></td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="mt-4 flex flex-wrap gap-2">
+            <button id="calculate" class="btn-primary px-5 py-2.5">Calcular comparação</button>
+            <button id="csv" class="btn-outline px-4 py-2.5">Exportar CSV</button>
+          </div>
+        </section>
+
+        <section class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div class="surface-sm p-4">
+            <p class="text-xs uppercase tracking-wide text-muted">Melhor resultado líquido</p>
+            <p id="bestName" class="font-semibold mt-2">—</p>
+            <p id="bestValue" class="text-xl font-bold number mt-1">—</p>
+            <p id="bestRent" class="text-xs mt-1 text-muted">—</p>
+          </div>
+          <div class="surface-sm p-4">
+            <p class="text-xs uppercase tracking-wide text-muted">Total investido</p>
+            <p id="invested" class="text-xl font-bold number mt-2">—</p>
+            <p id="investedNote" class="text-xs mt-1 text-muted">Aporte inicial, sem aportes mensais</p>
+          </div>
+          <div class="surface-sm p-4">
+            <p class="text-xs uppercase tracking-wide text-muted">Prazo da simulação</p>
+            <p id="term" class="text-xl font-bold number mt-2">—</p>
+            <p class="text-xs mt-1 text-muted">Mantido até o prazo final</p>
+          </div>
+        </section>
+
+        <section class="surface p-5">
+          <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
+            <div>
+              <h2 class="text-lg font-bold">Evolução do investimento (mês a mês)</h2>
+              <p class="text-sm text-muted">Linha bruta acumulada até o vencimento. O último ponto (após o prazo) mostra o valor líquido após IR e custos — a queda visual representa os descontos. Clique na legenda para ocultar/exibir.</p>
+            </div>
+            <span class="text-xs text-muted">R$</span>
+          </div>
+          <div class="chart-container">
+            <canvas id="evolutionChart"></canvas>
+          </div>
+        </section>
+
+        <section class="surface p-5">
+          <div class="flex flex-wrap items-center justify-between gap-2 mb-4">
+            <div><h2 class="text-lg font-bold">Resultados líquidos</h2><p class="text-sm text-muted">Ordenados do maior para o menor valor final.</p></div>
+            <span class="text-xs text-muted">Valores nominais em R$</span>
+          </div>
+          <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+              <thead><tr class="text-left border-b" style="border-color: var(--border);">
+                <th class="py-2 pr-2 text-muted">Investimento</th>
+                <th class="py-2 px-1.5 text-right text-muted">Bruto antes de custos</th>
+                <th class="py-2 px-1.5 text-right text-muted">Custos</th>
+                <th class="py-2 px-1.5 text-right text-muted">IR/IOF</th>
+                <th class="py-2 px-1.5 text-right text-muted">Líquido final</th>
+                <th class="py-2 pl-2 text-right text-muted">Rentab. líquida</th>
+              </tr></thead>
+              <tbody id="results"></tbody>
+            </table>
+          </div>
+          <div id="empty" class="hidden text-sm mt-3" style="color: #fda4af;">Informe valores válidos para realizar a simulação.</div>
+          <p id="realResult" class="mt-4 text-sm text-muted"></p>
+        </section>
+
+        <section class="surface p-5">
+          <h2 class="text-lg font-bold mb-2">Como interpretar</h2>
+          <ul class="list-disc pl-5 space-y-1.5 text-sm text-muted">
+            <li><b>Pós-fixado:</b> usa CDI × percentual contratado. A Selic é exibida como referência, mas não substitui o CDI informado.</li>
+            <li><b>Prefixado:</b> considera a taxa anual contratada constante até o vencimento.</li>
+            <li><b>IPCA+:</b> considera o IPCA informado constante e soma a taxa real contratada por capitalização composta.</li>
+            <li><b>Tributação:</b> CDB e Tesouro usam a tabela regressiva de IR por prazo. LCI usa a alíquota configurada.</li>
+            <li><b>Custos:</b> taxas anuais são aproximadas como desconto mensal sobre o saldo. O custo inicial incide no aporte inicial e em cada aporte mensal.</li>
+            <li><b>Aportes mensais:</b> o valor informado é depositado ao final de cada mês do prazo, passando a render junto com o saldo já acumulado. A rentabilidade líquida é calculada sobre o total investido (aporte inicial + aportes).</li>
+            <li><b>Gráfico:</b> a linha mostra a evolução bruta mês a mês. O ponto extra no final (coluna "Líquido") representa o valor após IR e custos, evidenciando a queda real do investimento.</li>
+            <li><b>BCB:</b> as taxas Selic, CDI e IPCA podem ser atualizadas a partir da API do Banco Central (SGS). O CDI é a taxa anualizada do último dia útil.</li>
+            <li><b>Persistência:</b> todos os campos são salvos automaticamente no navegador (localStorage) e restaurados ao reabrir a página.</li>
+          </ul>
+        </section>
+      </div>
+    </section>
+
+    <footer class="mt-7 text-xs leading-relaxed text-muted pt-4" style="border-top: 1px solid var(--border);">
+      <b>Importante — estimativa, não oferta ou recomendação.</b> Modelo simplificado para comparação, assumindo manutenção até o fim do prazo, taxas e índices constantes, capitalização mensal equivalente à taxa efetiva anual e resgate único. Não modela marcação a mercado, preço unitário de títulos, spread de recompra do Tesouro, cupons semestrais, mudanças futuras de CDI/IPCA, carência/liquidez, risco de crédito, FGC, limites de cobertura ou particularidades tributárias. A custódia B3 é aproximada mensalmente; a cobrança real segue as regras e datas da B3. Confirme tarifas e regras vigentes antes de investir. As taxas do BCB são obtidas via API pública e podem ter defasagem.
+    </footer>
+  </main>
+
+  <script src="script.js"></script>
+</body>
+</html>
